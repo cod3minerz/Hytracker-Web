@@ -1,5 +1,5 @@
-import { HomePage } from "./pages/HomePage";
+import { HomeClient } from "./HomeClient";
 
 export default function Home() {
-  return <HomePage />;
+  return <HomeClient />;
 }

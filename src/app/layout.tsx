@@ -1,6 +1,5 @@
 import "../styles/index.css";
-import { Providers } from "./providers";
-import { Layout } from "./components/Layout";
+import { ClientRoot } from "./ClientRoot";
 
 export const metadata = {
   title: "HyTracker — мониторинг серверов Hytale",
@@ -13,11 +12,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <Providers>
-          <Layout>{children}</Layout>
-        </Providers>
+    <html lang="ru" suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        <ClientRoot>{children}</ClientRoot>
       </body>
     </html>
   );

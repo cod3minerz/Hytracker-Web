@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Server, LogOut } from "lucide-react";
+import Image from "next/image";
+import { Menu, X, LogOut } from "lucide-react";
 import { useTelegramAuth } from "../contexts/TelegramAuthContext";
 
 const navLinks = [
@@ -17,22 +18,14 @@ const navLinks = [
 const TELEGRAM_BOT_NAME =
   typeof process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME === "string"
     ? process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME
-    : "HyTrackerBot";
+    : "hytracker_bot";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showLocalhostHint, setShowLocalhostHint] = useState(false);
   const pathname = usePathname();
   const { user, setUser, logout } = useTelegramAuth();
   const telegramWidgetRef = useRef<HTMLDivElement>(null);
   const telegramWidgetRefMobile = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const isLocalhost =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    setShowLocalhostHint(!!isLocalhost);
-  }, []);
 
   useEffect(() => {
     if (user) return;
@@ -79,16 +72,8 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-border bg-card">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <Server className="h-5 w-5 text-white" />
-            </div>
-            <span
-              className="text-[1.25rem] tracking-tight text-foreground"
-              style={{ fontWeight: 700 }}
-            >
-              Hy<span className="text-primary">tracker</span>
-            </span>
+          <Link href="/" className="flex shrink-0 items-center">
+            <Image src="/logo.svg" alt="HyTracker" width={140} height={36} className="h-9 w-auto" priority />
           </Link>
 
           <nav className="hidden md:flex md:items-center md:gap-1">
@@ -139,10 +124,7 @@ export function Header() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-foreground">Войти с Telegram</span>
-                <div ref={telegramWidgetRef} className="[&>script]:inline [&>iframe]:max-h-10" />
-              </div>
+              <div ref={telegramWidgetRef} className="[&>script]:inline [&>iframe]:max-h-10" />
             )}
           </div>
 
@@ -210,15 +192,7 @@ export function Header() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-foreground">Войти с Telegram</span>
-                  <div ref={telegramWidgetRefMobile} className="min-h-[40px] [&>iframe]:max-h-10" />
-                  {showLocalhostHint && (
-                    <p className="text-xs text-muted-foreground">
-                      На продакшене укажите домен в @BotFather: /setdomain
-                    </p>
-                  )}
-                </div>
+                <div ref={telegramWidgetRefMobile} className="min-h-[40px] [&>iframe]:max-h-10" />
               )}
             </div>
           </div>

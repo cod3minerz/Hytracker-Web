@@ -1,5 +1,7 @@
 export interface Server {
   id: string;
+  /** Unique URL slug, e.g. "dogecraft" for /server/dogecraft */
+  slug: string;
   name: string;
   ip: string;
   description: string;
@@ -7,10 +9,13 @@ export interface Server {
   image: string;
   /** Optional banner URL (image or GIF). If missing, card shows a placeholder with server name. */
   banner?: string;
-  /** Optional game version range, e.g. "1.8 - 1.21" */
+  /** Optional game version range, e.g. "1.8 - 1.21" — not shown on card. */
   version?: string;
   playersOnline: number;
   playersMax: number;
+  /** If false, card shows online as "-/max" (we don't track this server). Default true. */
+  monitoringPlugin?: boolean;
+  /** Stars: currency earned for activity on monitor + donate. Not a 5-star rating. */
   rating: number;
   votes: number;
   country: string;
@@ -19,6 +24,7 @@ export interface Server {
 export const servers: Server[] = [
   {
     id: "1",
+    slug: "dogecraft",
     name: "Dogecraft",
     ip: "play.dogecraft.net:5528",
     description: "We actively enforce a no-toxicity environment. If you want a chill place to build and progress long-term, you will fit in.",
@@ -34,6 +40,7 @@ export const servers: Server[] = [
   },
   {
     id: "2",
+    slug: "forgotten-eu",
     name: "Forgotten | Modded PvE EU",
     ip: "forgotten.top:5528",
     description: "A cozy PvE server with deeper progression and quality-of-life features, designed to let you play your own way.",
@@ -44,9 +51,11 @@ export const servers: Server[] = [
     rating: 4.5,
     votes: 408,
     country: "EU",
+    monitoringPlugin: false,
   },
   {
     id: "3",
+    slug: "we-are-games",
     name: "[WAG] We.Are.Games [PL]",
     ip: "hytale.are.games:5528",
     description: "We.Are.Games | Play \u2022 Create \u2022 Have Fun \u2022 Party system. Join a thriving community of players and builders.",
@@ -60,6 +69,7 @@ export const servers: Server[] = [
   },
   {
     id: "4",
+    slug: "hytalebox",
     name: "Hytale Box",
     ip: "play.hytalebox.com:5528",
     description: "Hytale Box Server Hispano. Join our Discord community for events, tournaments, and exclusive content drops.",
@@ -73,6 +83,7 @@ export const servers: Server[] = [
   },
   {
     id: "5",
+    slug: "guardianes",
     name: "Guardianes de Hytale",
     ip: "193.24.289.27:25528",
     description: "Guardianes de Hytale es un servidor Espa\u00f1ol estilo Survival. Experience unique quests and adventures.",
@@ -83,9 +94,11 @@ export const servers: Server[] = [
     rating: 3.9,
     votes: 178,
     country: "ES",
+    monitoringPlugin: false,
   },
   {
     id: "6",
+    slug: "hypecraft",
     name: "HypeCraft.pl",
     ip: "hypecraft.pl:5528",
     description: "PIERWSZY POLSKI SERWER HYTALE SURVIVAL. Competitive events every weekend with huge rewards.",
@@ -99,6 +112,7 @@ export const servers: Server[] = [
   },
   {
     id: "7",
+    slug: "hytale-bulgaria",
     name: "Hytale Bulgaria",
     ip: "hytale.undisturbed.top:15617",
     description: "\u041f\u044a\u0440\u0432\u0438\u044f\u0442 \u0438 \u043d\u0430\u0439-\u0433\u043e\u043b\u044f\u043c\u0430 \u0411\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438 \u0441\u044a\u0440\u0432\u044a\u0440. The biggest Bulgarian community server with factions and economy.",
@@ -112,6 +126,7 @@ export const servers: Server[] = [
   },
   {
     id: "8",
+    slug: "playtale",
     name: "Playtale Survival",
     ip: "play.playtale.net:5528",
     description: "A survival-focused server with custom enchantments, land claiming, and a player-driven marketplace.",
@@ -124,6 +139,28 @@ export const servers: Server[] = [
     country: "US",
   },
 ];
+
+export function getServerById(id: string): Server | undefined {
+  return servers.find((s) => s.id === id);
+}
+
+export function getServerBySlug(slug: string): Server | undefined {
+  return servers.find((s) => s.slug === slug);
+}
+
+/** Returns up to 6 servers similar by shared tags, excluding current id. */
+export function getSimilarServers(server: Server, limit = 6): Server[] {
+  const set = new Set(server.tags);
+  return servers
+    .filter((s) => s.id !== server.id)
+    .sort((a, b) => {
+      const aScore = a.tags.filter((t) => set.has(t)).length;
+      const bScore = b.tags.filter((t) => set.has(t)).length;
+      if (bScore !== aScore) return bScore - aScore;
+      return b.votes - a.votes;
+    })
+    .slice(0, limit);
+}
 
 export const gameModes = [
   "Survival",

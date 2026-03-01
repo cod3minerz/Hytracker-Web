@@ -1,4 +1,4 @@
-import { Server } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export function Footer() {
@@ -8,13 +8,8 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
-            <Link href="/" className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Server className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-[1.125rem] tracking-tight text-foreground" style={{ fontWeight: 700 }}>
-                Hy<span className="text-primary">tracker</span>
-              </span>
+            <Link href="/" className="flex items-center mb-4">
+              <Image src="/logo.svg" alt="HyTracker" width={120} height={31} className="h-8 w-auto" />
             </Link>
             <p className="text-[0.8125rem] text-muted-foreground leading-relaxed">
               Ищем и отслеживаем лучшие игровые серверы. Фильтры по режиму, онлайну и сообществу — найдите свой сервер.
@@ -23,15 +18,21 @@ export function Footer() {
 
           {/* Navigation */}
           <div>
-            <h4 className="text-[0.8125rem] text-foreground mb-4" style={{ fontWeight: 600 }}>Навигация</h4>
+            <h4 className="text-[0.8125rem] text-foreground mb-4 font-semibold">Навигация</h4>
             <ul className="space-y-2.5">
-              {["Главная", "Серверы", "Блог", "Гайды"].map((link) => (
-                <li key={link}>
+              {[
+                { label: "Главная", path: "/" },
+                { label: "Серверы", path: "/servers" },
+                { label: "Блог", path: "/blog" },
+                { label: "Гайды", path: "/guides" },
+                { label: "О нас", path: "/about" },
+              ].map(({ label, path }) => (
+                <li key={path}>
                   <Link
-                    href={link === "Главная" ? "/" : link === "Серверы" ? "/servers" : link === "Блог" ? "/blog" : "/guides"}
+                    href={path}
                     className="text-[0.8125rem] text-muted-foreground hover:text-primary transition-colors"
                   >
-                    {link}
+                    {label}
                   </Link>
                 </li>
               ))}

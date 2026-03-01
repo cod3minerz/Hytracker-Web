@@ -1,6 +1,16 @@
-import { Server, Users, Globe } from "lucide-react";
+import { Server, Users } from "lucide-react";
 
-export function HeroSection() {
+export interface HeroStats {
+  totalServers: number;
+  totalPlayers: number;
+  serversOnlineCount: number;
+}
+
+export function HeroSection({ stats }: { stats?: HeroStats }) {
+  const totalServers = stats?.totalServers ?? 0;
+  const totalPlayers = stats?.totalPlayers ?? 0;
+  const serversOnlineCount = stats?.serversOnlineCount ?? 0;
+
   return (
     <section className="bg-white border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 text-center">
@@ -33,23 +43,37 @@ export function HeroSection() {
         </p>
 
         {/* Stats */}
-        <div className="inline-flex items-center gap-6 sm:gap-8 px-6 py-3 rounded-2xl bg-secondary border border-border">
+        <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-3 rounded-2xl bg-secondary border border-border sm:px-6 sm:gap-8">
           <div className="flex items-center gap-2">
-            <Server className="w-4 h-4 text-muted-foreground" />
-            <span className="text-[0.9375rem] text-foreground" style={{ fontWeight: 600 }}>693</span>
+            <Server className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <span className="text-[0.9375rem] text-foreground font-semibold">{totalServers}</span>
             <span className="text-[0.8125rem] text-muted-foreground">серверов</span>
           </div>
-          <div className="w-px h-5 bg-border" />
+          <div className="hidden h-5 w-px shrink-0 bg-border sm:block" aria-hidden />
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-primary" />
-            <span className="text-[0.9375rem] text-primary" style={{ fontWeight: 600 }}>356</span>
+            <Users className="w-4 h-4 shrink-0 text-primary" />
+            <span className="text-[0.9375rem] text-primary font-semibold">{totalPlayers}</span>
             <span className="text-[0.8125rem] text-muted-foreground">играют сейчас</span>
           </div>
-          <div className="w-px h-5 bg-border" />
+          <div className="hidden h-5 w-px shrink-0 bg-border sm:block" aria-hidden />
           <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-muted-foreground" />
-            <span className="text-[0.9375rem] text-foreground" style={{ fontWeight: 600 }}>249</span>
-            <span className="text-[0.8125rem] text-muted-foreground">онлайн</span>
+            <span
+              className="h-2 w-2 shrink-0 rounded-full animate-pulse"
+              style={{ backgroundColor: "var(--vote)", boxShadow: "0 0 8px var(--vote), 0 0 14px var(--vote)" }}
+              aria-hidden
+            />
+            <span
+              className="text-[0.9375rem] font-semibold"
+              style={{ color: "var(--vote)", textShadow: "0 0 12px rgba(5, 150, 105, 0.4)" }}
+            >
+              {serversOnlineCount}
+            </span>
+            <span
+              className="text-[0.8125rem] font-medium"
+              style={{ color: "var(--vote)", textShadow: "0 0 8px rgba(5, 150, 105, 0.3)" }}
+            >
+              онлайн
+            </span>
           </div>
         </div>
       </div>

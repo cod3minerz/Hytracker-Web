@@ -1,8 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Optional: optimize large UI packages if needed
-  // experimental: { optimizePackageImports: ["@radix-ui/react-icons", "lucide-react"] },
+  serverExternalPackages: ["sonner"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts"],
+  },
+  poweredByHeader: false,
+  reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
+    ],
+  },
 };
 
 export default nextConfig;

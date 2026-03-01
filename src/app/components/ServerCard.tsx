@@ -1,8 +1,10 @@
 "use client";
 
-import { Star, Copy, ArrowUpCircle, Check, Monitor, Sparkles } from "lucide-react";
-import { useState } from "react";
+import Link from "next/link";
+import { Star, Copy, ArrowUpCircle, Check, Sparkles, ChevronDown, ChevronUp, ThumbsUp, TrendingUp } from "lucide-react";
+import { useState, useMemo } from "react";
 import type { Server } from "../data/servers";
+import { getMockOnline24h } from "../data/chartData";
 import { useTelegramAuth } from "../contexts/TelegramAuthContext";
 import {
   Dialog,
@@ -11,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import { SparklineChart } from "./SparklineChart";
 
 interface ServerCardProps {
   server: Server;
@@ -19,6 +22,13 @@ interface ServerCardProps {
 
 /** Fixed banner aspect ratio (e.g. 728×120) — image always fully visible, no crop. */
 const BANNER_ASPECT = 728 / 120;
+
+/** Hash string to a number (for stable color from server name). */
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i) | 0;
+  return Math.abs(h);
+}
 
 function BannerOrPlaceholder({
   server,
@@ -46,10 +56,22 @@ function BannerOrPlaceholder({
     );
   }
 
+  const hue = hashString(server.name) % 360;
+  const bg = `hsl(${hue}, 25%, 92%)`;
   return (
     <div
-      className={`flex items-center justify-center rounded-lg bg-accent px-3 py-2 text-center ${className ?? ""}`}
-      style={{ aspectRatio: BANNER_ASPECT }}
+      className={`flex items-center justify-center rounded-lg px-3 py-2 text-center transition-transform hover:scale-[1.01] ${className ?? ""}`}
+      style={{
+        aspectRatio: BANNER_ASPECT,
+        backgroundColor: bg,
+        backgroundImage: `repeating-linear-gradient(
+          -45deg,
+          transparent,
+          transparent 6px,
+          rgba(0,0,0,0.03) 6px,
+          rgba(0,0,0,0.03) 12px
+        )`,
+      }}
     >
       <span className="break-words text-sm font-medium text-foreground">{server.name}</span>
     </div>
@@ -60,7 +82,10 @@ export function ServerCard({ server, rank }: ServerCardProps) {
   const [copied, setCopied] = useState(false);
   const [voted, setVoted] = useState(false);
   const [voteDialogOpen, setVoteDialogOpen] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const { user } = useTelegramAuth();
+
+  const descriptionLong = server.description.length > 120 || server.description.split(/\s+/).length > 20;
 
   const handleCopyIP = () => {
     navigator.clipboard.writeText(server.ip).catch(() => {});
@@ -76,73 +101,124 @@ export function ServerCard({ server, rank }: ServerCardProps) {
     setVoted(!voted);
   };
 
-  const isPopular = server.votes >= 500 || server.playersOnline >= 50;
+  const hasMonitoring = server.monitoringPlugin !== false;
+  const isPopular =
+    server.votes >= 500 || (hasMonitoring && server.playersOnline >= 50);
+  const online24hData = useMemo(() => getMockOnline24h(server.slug), [server.slug]);
+  const peak24h = useMemo(() => Math.max(...online24hData.map((d) => d.online)), [online24hData]);
+  const avg24h = useMemo(
+    () => Math.round(online24hData.reduce((a, d) => a + d.online, 0) / online24hData.length),
+    [online24hData],
+  );
 
   return (
-    <article className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:gap-5 md:flex-row md:items-stretch md:gap-6 md:p-5">
-      {/* Left: rank, name, description, online + version */}
-      <div className="flex min-w-0 flex-col gap-2 md:order-1 md:w-[220px] md:shrink-0 md:gap-2.5">
-        <div className="flex items-start gap-2.5">
+    <article className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:shadow-lg hover:border-border/80 md:flex-row md:items-stretch md:gap-4 md:p-5" style={{ borderRadius: "var(--radius-xl)" }}>
+      {/* Block 1: Identity — rank, name, description, online */}
+      <div className="flex min-w-0 flex-col gap-2 md:order-1 md:w-[220px] md:shrink-0">
+        <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
             <span className="text-xs font-semibold">{rank}</span>
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 break-words text-base font-semibold leading-snug text-foreground sm:text-[1.0625rem]">
-              {server.name}
-            </h3>
+            <Link href={`/server/${server.slug}`} className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
+              <h3 className="line-clamp-2 break-words text-base font-semibold leading-snug text-foreground sm:text-[1.0625rem]">
+                {server.name}
+              </h3>
+            </Link>
             {isPopular && (
-              <div className="mt-1 flex items-center gap-1 text-xs text-primary">
+              <div className="mt-0.5 flex items-center gap-1 text-xs text-primary">
                 <Sparkles className="h-3 w-3 shrink-0" />
                 <span className="font-medium">Популярный</span>
               </div>
             )}
           </div>
         </div>
-        <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-          {server.description}
-        </p>
+        <div className="relative">
+          <p
+            className={`text-xs leading-snug text-muted-foreground ${!descriptionExpanded ? "line-clamp-2" : ""}`}
+          >
+            {server.description}
+          </p>
+          {descriptionLong && (
+            <button
+              type="button"
+              onClick={() => setDescriptionExpanded((e) => !e)}
+              className="mt-0.5 flex items-center gap-0.5 rounded text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-expanded={descriptionExpanded}
+            >
+              {descriptionExpanded ? (
+                <>
+                  Свернуть
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </>
+              ) : (
+                <>
+                  Развернуть
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </>
+              )}
+            </button>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div
-            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 ${
-              server.playersOnline > 0
-                ? "border-primary/20 bg-accent"
-                : "border-border bg-secondary"
-            }`}
+            className="inline-flex items-center gap-2"
+            title={hasMonitoring ? undefined : "Статистика онлайна не отслеживается"}
           >
+            {hasMonitoring && (
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  server.playersOnline > 0 ? "animate-pulse" : ""
+                }`}
+                style={
+                  server.playersOnline > 0
+                    ? { backgroundColor: "var(--vote)", boxShadow: "0 0 6px var(--vote), 0 0 10px var(--vote)" }
+                    : { backgroundColor: "var(--muted-foreground)", opacity: 0.5 }
+                }
+                aria-hidden
+              />
+            )}
             <span
-              className={`h-2 w-2 shrink-0 rounded-full ${
-                server.playersOnline > 0 ? "bg-primary" : "bg-muted-foreground/50"
-              }`}
-            />
-            <span className="text-sm font-semibold text-foreground">
-              {server.playersOnline}/{server.playersMax}
+              className={`text-sm font-semibold ${!(hasMonitoring && server.playersOnline > 0) ? "text-muted-foreground" : ""}`}
+              style={
+                hasMonitoring && server.playersOnline > 0
+                  ? { color: "var(--vote)", textShadow: "0 0 8px rgba(5, 150, 105, 0.35)" }
+                  : undefined
+              }
+            >
+              {hasMonitoring
+                ? `${server.playersOnline}/${server.playersMax}`
+                : `–/${server.playersMax}`}
             </span>
-            <span className="text-xs text-muted-foreground">онлайн</span>
+            <span
+              className={`text-xs font-medium ${!(hasMonitoring && server.playersOnline > 0) ? "text-muted-foreground" : ""}`}
+              style={
+                hasMonitoring && server.playersOnline > 0
+                  ? { color: "var(--vote)", textShadow: "0 0 6px rgba(5, 150, 105, 0.25)" }
+                  : undefined
+              }
+            >
+              онлайн
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Center: banner (fixed ratio, full image visible) → IP → tags */}
-      <div className="flex min-w-0 flex-1 flex-col gap-2 md:order-2 md:gap-2.5">
-        <BannerOrPlaceholder server={server} className="shrink-0" />
-        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2">
-          <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span
-            className="min-w-0 flex-1 truncate font-mono text-sm text-foreground"
-            title={server.ip}
-          >
+      {/* Block 2: Media — banner, IP, tags */}
+      <div className="flex min-w-0 flex-1 flex-col gap-2 md:order-2">
+        <Link href={`/server/${server.slug}`} className="block shrink-0 rounded-lg overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <BannerOrPlaceholder server={server} className="w-full" />
+        </Link>
+        <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-secondary/80 px-2 py-1.5">
+          <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground" title={server.ip}>
             {server.ip}
           </span>
           <button
             onClick={handleCopyIP}
-            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Скопировать IP"
           >
-            {copied ? (
-              <Check className="h-4 w-4" style={{ color: "var(--vote)" }} />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
+            {copied ? <Check className="h-3.5 w-3.5" style={{ color: "var(--vote)" }} /> : <Copy className="h-3.5 w-3.5" />}
           </button>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -155,35 +231,57 @@ export function ServerCard({ server, rank }: ServerCardProps) {
             </span>
           ))}
         </div>
+        <div className="rounded-xl border border-border/80 bg-muted/30 p-2">
+          <div className="mb-1 flex items-center justify-between gap-1">
+            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+              <TrendingUp className="h-3 w-3" />
+              Онлайн 24 ч
+            </span>
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              пик {peak24h} · ср. {avg24h}
+            </span>
+          </div>
+          <div className="h-7 w-full">
+            <SparklineChart data={online24hData} color="var(--vote)" />
+          </div>
+        </div>
       </div>
 
-      {/* Right: Vote button, votes count, stars count */}
-      <div className="flex flex-col gap-3 md:order-3 md:w-[160px] md:shrink-0 md:justify-center">
-        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:flex-col sm:items-stretch md:gap-3">
-          <button
-            onClick={handleVote}
-            className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "var(--vote)", color: "var(--vote-foreground)" }}
-          >
-            <ArrowUpCircle className="h-4 w-4" />
-            Голосовать
-          </button>
+      {/* Block 3: Actions — vote button, votes, stars */}
+      <div className="flex flex-col gap-2 md:order-3 md:w-[160px] md:shrink-0 md:justify-center md:gap-3">
+        <button
+          onClick={handleVote}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:w-auto"
+          style={{ backgroundColor: "var(--vote)", color: "var(--vote-foreground)" }}
+        >
+          <ArrowUpCircle className="h-4 w-4" />
+          Голосовать
+        </button>
+        <div className="flex w-full gap-2 md:flex-col md:gap-3">
           <div
-            className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium md:flex-initial"
             style={{
               backgroundColor: "var(--vote-muted)",
               color: "var(--vote-muted-foreground)",
             }}
+            title="Голоса пользователей за сервер"
           >
+            <ThumbsUp className="h-4 w-4 shrink-0" />
             <span className="font-semibold">
-              {(voted ? server.votes + 1 : server.votes).toLocaleString()}
+              {(voted ? server.votes + 1 : server.votes).toLocaleString("ru-RU")}
             </span>
             <span className="opacity-90">голосов</span>
           </div>
-          <div className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary px-3 py-2 text-xs font-medium text-muted-foreground">
+          <div
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-primary/20 px-3 py-2 text-xs font-medium md:flex-initial"
+            style={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)" }}
+            title="Счётчик звёзд: начисляются за активность на мониторинге и донат (не рейтинг)"
+          >
             <Star className="h-4 w-4 shrink-0 text-primary fill-primary" />
-            <span className="font-semibold text-foreground">{server.rating.toFixed(1)}</span>
-            <span>звёзд</span>
+            <span className="font-semibold">
+              {Number.isInteger(server.rating) ? server.rating.toLocaleString("ru-RU") : Math.round(server.rating).toLocaleString("ru-RU")}
+            </span>
+            <span className="opacity-90">звёзд</span>
           </div>
         </div>
       </div>

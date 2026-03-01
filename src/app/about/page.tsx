@@ -1,5 +1,5 @@
-import { PlaceholderPage } from "../pages/PlaceholderPage";
+import { PlaceholderClient } from "../PlaceholderClient";
 
 export default function AboutPage() {
-  return <PlaceholderPage />;
+  return <PlaceholderClient />;
 }

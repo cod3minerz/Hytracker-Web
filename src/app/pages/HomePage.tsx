@@ -6,6 +6,16 @@ import { FilterBar } from "../components/FilterBar";
 import { ServerCard } from "../components/ServerCard";
 import { servers } from "../data/servers";
 
+const heroStats = {
+  totalServers: servers.length,
+  totalPlayers: servers
+    .filter((s) => s.monitoringPlugin !== false)
+    .reduce((a, s) => a + s.playersOnline, 0),
+  serversOnlineCount: servers.filter(
+    (s) => s.monitoringPlugin !== false && s.playersOnline > 0
+  ).length,
+};
+
 export function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -50,7 +60,7 @@ export function HomePage() {
 
   return (
     <div>
-      <HeroSection />
+      <HeroSection stats={heroStats} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         <FilterBar
@@ -72,29 +82,19 @@ export function HomePage() {
 
         {/* Empty state */}
         {filteredServers.length === 0 && (
-          <div className="rounded-2xl border border-border bg-card p-8 text-center sm:p-12">
+          <div className="rounded-2xl border border-border bg-card p-8 text-center sm:p-12" style={{ borderRadius: "var(--radius-xl)" }}>
             <p className="text-muted-foreground text-[0.9375rem]">
-              По вашему запросу серверов не найдено.
+              Ничего не найдено. Попробуйте другие фильтры или поисковый запрос.
             </p>
             <button
+              type="button"
               onClick={() => {
                 setSearchQuery("");
                 setSelectedTags([]);
               }}
-              className="mt-4 px-4 py-2 text-[0.8125rem] text-primary hover:bg-accent rounded-lg transition-colors"
-              style={{ fontWeight: 500 }}
+              className="mt-4 rounded-lg px-4 py-2 text-[0.8125rem] font-medium text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Сбросить фильтры
-            </button>
-          </div>
-        )}
-
-        {/* Load more */}
-        {filteredServers.length > 0 && (
-          <div className="flex justify-center mt-8">
-            <button className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-[0.875rem] text-muted-foreground bg-white border border-border hover:border-primary/30 hover:text-foreground transition-all shadow-sm" style={{ fontWeight: 500 }}>
-              Показать ещё
-              <span className="text-muted-foreground/50">•••</span>
             </button>
           </div>
         )}
