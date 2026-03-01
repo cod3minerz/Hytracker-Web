@@ -1,4 +1,5 @@
 import { Server, Users } from "lucide-react";
+import { BlurHeading } from "./BlurHeading";
 
 export interface HeroStats {
   totalServers: number;
@@ -12,7 +13,7 @@ export function HeroSection({ stats }: { stats?: HeroStats }) {
   const serversOnlineCount = stats?.serversOnlineCount ?? 0;
 
   return (
-    <section className="bg-white border-b border-border">
+    <section className="border-b border-border bg-card">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 text-center">
         {/* Live stats badge */}
         <div
@@ -32,10 +33,16 @@ export function HeroSection({ stats }: { stats?: HeroStats }) {
         </div>
 
         {/* Heading */}
-        <h1 className="text-[2rem] sm:text-[2.5rem] md:text-[3rem] tracking-tight text-foreground mb-4" style={{ fontWeight: 800, lineHeight: 1.1 }}>
-          Найдите свой{" "}
-          <span className="text-primary">сервер Hytale</span>
-        </h1>
+        <BlurHeading
+          as="h1"
+          text="Найдите свой сервер Hytale"
+          className="mb-4 text-[2rem] tracking-tight text-foreground sm:text-[2.5rem] md:text-[3rem]"
+          style={{ fontWeight: 800, lineHeight: 1.1 }}
+          animateBy="words"
+          direction="top"
+          delay={120}
+          getWordClassName={(i) => (i >= 2 ? "text-primary" : "")}
+        />
 
         {/* Subtitle */}
         <p className="text-[1rem] sm:text-[1.0625rem] text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">

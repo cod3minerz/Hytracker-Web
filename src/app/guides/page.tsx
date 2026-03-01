@@ -1,5 +1,5 @@
-import { PlaceholderClient } from "../PlaceholderClient";
+import { redirect } from "next/navigation";
 
 export default function GuidesPage() {
-  return <PlaceholderClient />;
+  redirect("/");
 }

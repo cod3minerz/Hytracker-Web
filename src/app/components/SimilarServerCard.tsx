@@ -1,20 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Star, Copy, Check, ThumbsUp, TrendingUp } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Star, Copy, Check, ThumbsUp } from "lucide-react";
 import type { Server } from "@/app/data/servers";
-import { getMockOnline24h } from "@/app/data/chartData";
-import { SparklineChart } from "@/app/components/SparklineChart";
 
 const BANNER_ASPECT = 728 / 120;
-
-function hashString(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++)
-    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
 
 function BannerOrPlaceholder({
   server,
@@ -42,20 +33,20 @@ function BannerOrPlaceholder({
     );
   }
 
-  const hue = hashString(server.name) % 360;
-  const bg = `hsl(${hue}, 28%, 92%)`;
   return (
     <div
-      className={`flex items-center justify-center rounded-t-xl px-3 py-2 text-center ${className ?? ""}`}
+      className={`relative flex min-h-0 w-full items-center justify-center overflow-hidden rounded-t-xl text-center ${className ?? ""}`}
       style={{
         aspectRatio: BANNER_ASPECT,
-        backgroundColor: bg,
-        backgroundImage: `repeating-linear-gradient(-45deg, transparent, transparent 6px, rgba(0,0,0,0.04) 6px, rgba(0,0,0,0.04) 12px)`,
+        backgroundImage: "url('/background.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
-      <span className="line-clamp-2 break-words text-sm font-medium text-foreground">
+      <span className="relative z-10 line-clamp-2 max-w-full break-words px-2 text-base font-semibold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] sm:text-lg">
         {server.name}
       </span>
+      <div className="absolute inset-0 bg-black/40" aria-hidden />
     </div>
   );
 }
@@ -66,18 +57,25 @@ interface SimilarServerCardProps {
 
 export function SimilarServerCard({ server }: SimilarServerCardProps) {
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasMonitoring = server.monitoringPlugin !== false;
-  const onlineData = getMockOnline24h(server.slug);
-  const peakOnline = Math.max(...onlineData.map((d) => d.online));
-  const avgOnline =
-    onlineData.reduce((a, d) => a + d.online, 0) / onlineData.length;
 
   const handleCopy = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     navigator.clipboard.writeText(server.ip).catch(() => {});
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyTimeoutRef.current = setTimeout(() => {
+      copyTimeoutRef.current = null;
+      setCopied(false);
+    }, 2000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   return (
     <Link
@@ -95,7 +93,19 @@ export function SimilarServerCard({ server }: SimilarServerCardProps) {
           {server.description}
         </p>
 
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span
+            className="text-xs font-semibold tabular-nums"
+            style={
+              hasMonitoring && server.playersOnline > 0
+                ? { color: "var(--vote)" }
+                : undefined
+            }
+          >
+            {hasMonitoring
+              ? `${server.playersOnline}/${server.playersMax} онлайн`
+              : `–/${server.playersMax} онлайн`}
+          </span>
           {server.tags.slice(0, 3).map((tag) => (
             <span
               key={tag}
@@ -104,33 +114,6 @@ export function SimilarServerCard({ server }: SimilarServerCardProps) {
               {tag}
             </span>
           ))}
-        </div>
-
-        <div className="mt-3 rounded-xl border border-border/80 bg-muted/40 p-2.5">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-medium text-muted-foreground">
-              Онлайн за 24 ч
-            </span>
-            <span
-              className="text-xs font-semibold tabular-nums"
-              style={
-                hasMonitoring && server.playersOnline > 0
-                  ? { color: "var(--vote)" }
-                  : undefined
-              }
-            >
-              {hasMonitoring
-                ? `${server.playersOnline}/${server.playersMax}`
-                : `–/${server.playersMax}`}
-            </span>
-          </div>
-          <div className="h-8 w-full">
-            <SparklineChart data={onlineData} color="var(--vote)" />
-          </div>
-          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-            <span>Пик: {peakOnline}</span>
-            <span>Сред: {Math.round(avgOnline)}</span>
-          </div>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">

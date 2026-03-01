@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { FileText, BookOpen, Compass, Info, ServerCrash } from "lucide-react";
+import { FileText, Compass, Info, ServerCrash } from "lucide-react";
 
 const pageInfo: Record<string, { icon: React.ReactNode; title: string; description: string }> = {
   "/servers": {
@@ -13,11 +13,6 @@ const pageInfo: Record<string, { icon: React.ReactNode; title: string; descripti
     icon: <FileText className="w-10 h-10 text-primary" />,
     title: "Блог",
     description: "Новости, обновления и материалы сообщества.",
-  },
-  "/guides": {
-    icon: <BookOpen className="w-10 h-10 text-primary" />,
-    title: "Гайды",
-    description: "От настройки сервера до продвинутых стратегий игры.",
   },
   "/about": {
     icon: <Info className="w-10 h-10 text-primary" />,
@@ -36,7 +31,7 @@ export function PlaceholderPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-center">
-      <div className="bg-white rounded-2xl border border-border shadow-sm p-12 md:p-16 max-w-lg mx-auto">
+      <div className="rounded-2xl border border-border bg-card shadow-sm p-12 md:p-16 max-w-lg mx-auto">
         <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center mx-auto mb-6">
           {info.icon}
         </div>

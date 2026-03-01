@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Star, Copy, ArrowUpCircle, Check, Sparkles, ChevronDown, ChevronUp, ThumbsUp, TrendingUp } from "lucide-react";
-import { useState, useMemo } from "react";
+import { Star, Copy, ArrowUpCircle, Check, Sparkles, ChevronDown, ChevronUp, ThumbsUp } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { Server } from "../data/servers";
-import { getMockOnline24h } from "../data/chartData";
 import { useTelegramAuth } from "../contexts/TelegramAuthContext";
 import {
   Dialog,
@@ -13,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import { SparklineChart } from "./SparklineChart";
 
 interface ServerCardProps {
   server: Server;
@@ -22,13 +20,6 @@ interface ServerCardProps {
 
 /** Fixed banner aspect ratio (e.g. 728×120) — image always fully visible, no crop. */
 const BANNER_ASPECT = 728 / 120;
-
-/** Hash string to a number (for stable color from server name). */
-function hashString(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i) | 0;
-  return Math.abs(h);
-}
 
 function BannerOrPlaceholder({
   server,
@@ -56,24 +47,20 @@ function BannerOrPlaceholder({
     );
   }
 
-  const hue = hashString(server.name) % 360;
-  const bg = `hsl(${hue}, 25%, 92%)`;
   return (
     <div
-      className={`flex items-center justify-center rounded-lg px-3 py-2 text-center transition-transform hover:scale-[1.01] ${className ?? ""}`}
+      className={`relative flex min-h-0 w-full items-center justify-center overflow-hidden rounded-lg bg-muted text-center ${className ?? ""}`}
       style={{
         aspectRatio: BANNER_ASPECT,
-        backgroundColor: bg,
-        backgroundImage: `repeating-linear-gradient(
-          -45deg,
-          transparent,
-          transparent 6px,
-          rgba(0,0,0,0.03) 6px,
-          rgba(0,0,0,0.03) 12px
-        )`,
+        backgroundImage: "url('/background.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
-      <span className="break-words text-sm font-medium text-foreground">{server.name}</span>
+      <span className="relative z-10 max-w-full break-words px-2 text-lg font-semibold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] sm:text-xl">
+        {server.name}
+      </span>
+      <div className="absolute inset-0 bg-black/40" aria-hidden />
     </div>
   );
 }
@@ -83,15 +70,49 @@ export function ServerCard({ server, rank }: ServerCardProps) {
   const [voted, setVoted] = useState(false);
   const [voteDialogOpen, setVoteDialogOpen] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [showExpandButton, setShowExpandButton] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
   const { user } = useTelegramAuth();
 
-  const descriptionLong = server.description.length > 120 || server.description.split(/\s+/).length > 20;
+  const checkOverflow = useCallback(() => {
+    const el = descRef.current;
+    if (!el || descriptionExpanded) {
+      setShowExpandButton(false);
+      return;
+    }
+    setShowExpandButton(el.scrollHeight > el.clientHeight);
+  }, [descriptionExpanded]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => checkOverflow());
+    return () => cancelAnimationFrame(id);
+  }, [checkOverflow, server.description]);
+
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => checkOverflow());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [checkOverflow]);
+
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCopyIP = () => {
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     navigator.clipboard.writeText(server.ip).catch(() => {});
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyTimeoutRef.current = setTimeout(() => {
+      copyTimeoutRef.current = null;
+      setCopied(false);
+    }, 2000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   const handleVote = () => {
     if (!user) {
@@ -104,12 +125,6 @@ export function ServerCard({ server, rank }: ServerCardProps) {
   const hasMonitoring = server.monitoringPlugin !== false;
   const isPopular =
     server.votes >= 500 || (hasMonitoring && server.playersOnline >= 50);
-  const online24hData = useMemo(() => getMockOnline24h(server.slug), [server.slug]);
-  const peak24h = useMemo(() => Math.max(...online24hData.map((d) => d.online)), [online24hData]);
-  const avg24h = useMemo(
-    () => Math.round(online24hData.reduce((a, d) => a + d.online, 0) / online24hData.length),
-    [online24hData],
-  );
 
   return (
     <article className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm transition-all hover:shadow-lg hover:border-border/80 md:flex-row md:items-stretch md:gap-4 md:p-5" style={{ borderRadius: "var(--radius-xl)" }}>
@@ -135,11 +150,12 @@ export function ServerCard({ server, rank }: ServerCardProps) {
         </div>
         <div className="relative">
           <p
+            ref={descRef}
             className={`text-xs leading-snug text-muted-foreground ${!descriptionExpanded ? "line-clamp-2" : ""}`}
           >
             {server.description}
           </p>
-          {descriptionLong && (
+          {(showExpandButton || descriptionExpanded) && (
             <button
               type="button"
               onClick={() => setDescriptionExpanded((e) => !e)}
@@ -230,20 +246,6 @@ export function ServerCard({ server, rank }: ServerCardProps) {
               {tag}
             </span>
           ))}
-        </div>
-        <div className="rounded-xl border border-border/80 bg-muted/30 p-2">
-          <div className="mb-1 flex items-center justify-between gap-1">
-            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-              <TrendingUp className="h-3 w-3" />
-              Онлайн 24 ч
-            </span>
-            <span className="text-[10px] tabular-nums text-muted-foreground">
-              пик {peak24h} · ср. {avg24h}
-            </span>
-          </div>
-          <div className="h-7 w-full">
-            <SparklineChart data={online24hData} color="var(--vote)" />
-          </div>
         </div>
       </div>
 

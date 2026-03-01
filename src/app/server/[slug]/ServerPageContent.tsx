@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   Star,
   Copy,
@@ -33,13 +33,6 @@ import { SimilarServerCard } from "@/app/components/SimilarServerCard";
 
 const BANNER_ASPECT = 728 / 120;
 
-function hashString(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++)
-    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
 function BannerOrPlaceholder({
   server,
   className,
@@ -66,27 +59,21 @@ function BannerOrPlaceholder({
     );
   }
 
-  const hue = hashString(server.name) % 360;
-  const bg = `hsl(${hue}, 25%, 92%)`;
   return (
     <div
-      className={`flex items-center justify-center rounded-xl px-4 py-3 text-center ${className ?? ""}`}
+      className={`relative flex min-h-0 w-full items-center justify-center overflow-hidden rounded-xl text-center ${className ?? ""}`}
       style={{
         aspectRatio: BANNER_ASPECT,
-        backgroundColor: bg,
-        backgroundImage: `repeating-linear-gradient(
-          -45deg,
-          transparent,
-          transparent 6px,
-          rgba(0,0,0,0.03) 6px,
-          rgba(0,0,0,0.03) 12px
-        )`,
         borderRadius: "var(--radius-xl)",
+        backgroundImage: "url('/background.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
-      <span className="break-words text-sm font-medium text-foreground">
+      <span className="relative z-10 max-w-full break-words px-4 text-xl font-semibold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] sm:text-2xl">
         {server.name}
       </span>
+      <div className="absolute inset-0 bg-black/40" aria-hidden />
     </div>
   );
 }
@@ -104,18 +91,51 @@ export function ServerPageContent({
   const [voted, setVoted] = useState(false);
   const [voteDialogOpen, setVoteDialogOpen] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [showExpandButton, setShowExpandButton] = useState(false);
+  const descRef = useRef<HTMLParagraphElement>(null);
   const { user } = useTelegramAuth();
 
   const hasMonitoring = server.monitoringPlugin !== false;
-  const descriptionLong =
-    server.description.length > 120 ||
-    server.description.split(/\s+/).length > 20;
+
+  const checkDescOverflow = useCallback(() => {
+    const el = descRef.current;
+    if (!el || descriptionExpanded) {
+      setShowExpandButton(false);
+      return;
+    }
+    setShowExpandButton(el.scrollHeight > el.clientHeight);
+  }, [descriptionExpanded]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => checkDescOverflow());
+    return () => cancelAnimationFrame(id);
+  }, [checkDescOverflow, server.description]);
+
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => checkDescOverflow());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [checkDescOverflow]);
+
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCopyIP = () => {
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     navigator.clipboard.writeText(server.ip).catch(() => {});
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyTimeoutRef.current = setTimeout(() => {
+      copyTimeoutRef.current = null;
+      setCopied(false);
+    }, 2000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   const handleVote = () => {
     if (!user) {
@@ -296,13 +316,14 @@ export function ServerPageContent({
         </h2>
         <div className="mb-4">
           <p
+            ref={descRef}
             className={`text-sm leading-relaxed text-muted-foreground ${
               !descriptionExpanded ? "line-clamp-6" : ""
             }`}
           >
             {server.description}
           </p>
-          {descriptionLong && (
+          {(showExpandButton || descriptionExpanded) && (
             <button
               type="button"
               onClick={() => setDescriptionExpanded((e) => !e)}
@@ -355,11 +376,6 @@ export function ServerPageContent({
             )}
             Скопировать
           </button>
-          {server.version && (
-            <span className="text-sm text-muted-foreground">
-              Версия: {server.version}
-            </span>
-          )}
         </div>
       </section>
 
@@ -539,7 +555,7 @@ export function ServerPageContent({
           <h2 className="font-heading mb-4 text-xl font-medium text-foreground">
             Похожие серверы
           </h2>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {similarServers.map((s) => (
               <SimilarServerCard key={s.id} server={s} />
             ))}
